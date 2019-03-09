@@ -24,9 +24,26 @@ class SCProc(QMainWindow):
         #     self.data_proc(data)
 
     def calibrate(self):
+        x_data = np.ndarray([])
+        y_data = np.ndarray([])
         calib = np.transpose(np.loadtxt(DIR_CALIB + 'calib.pgm', skiprows=4))
-        self.beam_plot.setImage(calib)
         self.profile_plot.plot(calib[:, 50], pen=pg.mkPen('r', width=1))
+        self.beam_plot.setImage(calib)
+        for row in range(50, 250, 50):
+            calib_sliced = calib[:, row]
+            val_up = np.where(calib_sliced > calib_sliced.max() * 4 / 5)
+            x_data = np.append(x_data, val_up[0][0])
+            y_data = np.append(y_data, row)
+            x_data = np.append(x_data, val_up[0][-1])
+            y_data = np.append(y_data, row)
+        self.profile_plot.clear()
+        self.profile_plot.plot(x_data, y_data, pen=None, symbol='o')
+
+        circlefit = lambda p, x: - np.sqrt(p[0] ** 2 - (x - p[1]) ** 2) + p[2]
+        errfunc = lambda p, x, y: circlefit(p, x) - y_data
+        p = [650, np.mean(x_data), 500]
+        p_fit, success = optimize.leastsq(errfunc, p[:], args=(x_data, y_data))
+        print(p_fit)
 
     def data_proc(self, data):
         profile = np.sum(data, axis=0)
