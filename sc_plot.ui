@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>519</width>
+    <width>829</width>
     <height>609</height>
    </rect>
   </property>
@@ -19,20 +19,76 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>511</width>
-      <height>401</height>
+      <width>331</width>
+      <height>271</height>
      </rect>
     </property>
    </widget>
-   <widget class="QWidget" name="output_profile" native="true">
+   <widget class="QWidget" name="output_plot" native="true">
     <property name="geometry">
      <rect>
-      <x>0</x>
-      <y>410</y>
-      <width>511</width>
-      <height>141</height>
+      <x>330</x>
+      <y>0</y>
+      <width>491</width>
+      <height>551</height>
      </rect>
     </property>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>2</x>
+      <y>289</y>
+      <width>321</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="btn_start">
+       <property name="text">
+        <string>Start</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="spin_sample">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QPushButton" name="btn_save">
+       <property name="text">
+        <string>Save</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QSlider" name="slider_sample">
+       <property name="maximum">
+        <number>0</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0" colspan="2">
+      <widget class="QProgressBar" name="progress_bar">
+       <property name="value">
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -40,7 +96,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>519</width>
+     <width>829</width>
      <height>22</height>
     </rect>
    </property>
@@ -48,5 +104,38 @@
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>slider_sample</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spin_sample</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>89</x>
+     <y>369</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>90</x>
+     <y>394</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spin_sample</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>slider_sample</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>90</x>
+     <y>394</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>89</x>
+     <y>369</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>
