@@ -34,8 +34,11 @@ class SCProc(QMainWindow):
     def main_loop(self):
         self.files_list = os.listdir(DIR_DATA)
         num = 0
-        dct_files = {os.path.getctime(os.path.join(DIR_DATA, f)): f for f in self.files_list}
-        self.files_list = [val for (key, val) in sorted(dct_files.items())]
+        # sorting by date
+        # dct_files = {os.path.getctime(os.path.join(DIR_DATA, f)): f for f in self.files_list}
+        # self.files_list = [val for (key, val) in sorted(dct_files.items())]
+        self.files_list = sorted(self.files_list, key=lambda x: os.path.getctime(os.path.join(DIR_DATA, x)))
+
         for file in self.files_list:
             num += 1
             try:
