@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QFileDialog
 from PyQt5 import uic
+import json
 import sys
 import numpy as np
 import pyqtgraph as pg
 from scipy import optimize
 import os
-DIR_CALIB = os.getcwd() + '/'
+DIR = os.getcwd() + '/'
 DIR_DATA = os.getcwd() + '/data/'
 
 
@@ -18,6 +19,9 @@ class SCProc(QMainWindow):
         self.EXPERIMENT_TIME = 10  # ns - set by user
         self.EXPERIMENT_CALIBRATION = 0  # ns per dot
         self.x = np.arange(0, 1280, 1)
+        self.load_flag = 0
+        self.files_list = os.listdir(DIR_DATA)
+
         self.profile_data = {}
         self.image_data = {}
         self.fft_data = {}
@@ -30,24 +34,23 @@ class SCProc(QMainWindow):
         self.btn_start.clicked.connect(self.main_loop)
         self.spin_sample.valueChanged.connect(self.sample_replot)
         self.btn_save.clicked.connect(self.data_save)
+        self.btn_load.clicked.connect(self.data_load)
 
     def main_loop(self):
-        self.files_list = os.listdir(DIR_DATA)
+        self.load_flag = 0
         num = 0
         # sorting by date
-        # dct_files = {os.path.getctime(os.path.join(DIR_DATA, f)): f for f in self.files_list}
-        # self.files_list = [val for (key, val) in sorted(dct_files.items())]
-        self.files_list = sorted(self.files_list, key=lambda x: os.path.getctime(os.path.join(DIR_DATA, x)))
+        self.files_list = sorted(os.listdir(DIR_DATA), key=lambda x: os.path.getctime(os.path.join(DIR_DATA, x)))
 
         for file in self.files_list:
             num += 1
             try:
-                self.aux_data[num] = file.split('_')[2]
+                self.aux_data[str(num)] = file.split('_')[2]
             except IndexError:
-                self.aux_data[num] = 0
-
+                self.aux_data[str(num)] = 0
             data = np.transpose(np.loadtxt(DIR_DATA + file, skiprows=4))
-            self.data_proc(data, num)
+            self.data_proc(data, str(num))
+
         self.slider_sample.setRange(1, len(self.files_list))
         self.spin_sample.setRange(1, len(self.files_list))
         self.sample_replot()
@@ -55,7 +58,7 @@ class SCProc(QMainWindow):
     def calibrate(self):
         x_data = np.empty(0)
         y_data = np.empty(0)
-        calib = np.transpose(np.loadtxt(DIR_CALIB + 'calib.pgm', skiprows=4))
+        calib = np.transpose(np.loadtxt(DIR + 'calib.pgm', skiprows=4))
 
         for row in range(50, 450, 25):
             calib_sliced = calib[:, row]
@@ -69,14 +72,13 @@ class SCProc(QMainWindow):
         try:
             circlefit = lambda p, x: - np.sqrt(p[0] ** 2 - (x - p[1]) ** 2) + p[2]
             errfunc = lambda p, x, y: circlefit(p, x) - y_data
-            p = [600, np.mean(x_data), 450]
+            p = [700, np.mean(x_data), 450]
             p_fit, success = optimize.leastsq(errfunc, p[:], args=(x_data, y_data))
             print(p_fit)
-
             self.statusbar.showMessage('calibration is done, R = %0.2f pixels' % (p_fit[0]))
             self.EXPERIMENT_CALIBRATION = self.EXPERIMENT_TIME / 2 / p_fit[0]
             self.beam_plot.setImage(calib)
-            self.profile_plot.plot(np.arange(21, 1205, 1), circlefit(p_fit, np.arange(21, 1205, 1)), pen=None,
+            self.profile_plot.plot(np.arange(0, 1300, 1), circlefit(p_fit, np.arange(0, 1300, 1)), pen=None,
                                    symbol='star', symbolSize=5)
         except RuntimeWarning as exc:
             print(exc)
@@ -96,25 +98,55 @@ class SCProc(QMainWindow):
 
         self.profile_data[num] = sliced_profile
         self.fft_data[num] = (freq, np.sqrt(fft.real**2 + fft.imag**2))
-        self.progress_bar.setValue(num / len(self.files_list) * 100)
+        self.progress_bar.setValue(int(num) / len(self.files_list) * 100)
 
     def sample_replot(self):
-        sample = self.spin_sample.value()
-        profile_data = self.profile_data[sample]
-        image = self.image_data[sample]
-        freq, fft = self.fft_data[sample]
         x = self.x * self.EXPERIMENT_CALIBRATION
+        sample = str(self.spin_sample.value())
+        profile_data = self.profile_data[sample]
+
+        if not self.load_flag:
+            profile_data = self.profile_data[sample]
+            image = self.image_data[sample]
+            freq, fft = self.fft_data[sample]
+
+            self.profile_plot.clear()
+            self.fft_plot.clear()
+
+            self.beam_plot.setImage(image)
+            self.profile_plot.plot(x, profile_data, pen=pg.mkPen('r', width=1))
+            self.fft_plot.plot(freq / 1e9, fft, pen=pg.mkPen('g', width=1))
 
         self.profile_plot.clear()
-        self.fft_plot.clear()
-
-        self.beam_plot.setImage(image)
         self.profile_plot.plot(x, profile_data, pen=pg.mkPen('r', width=1))
-        self.fft_plot.plot(freq / 1e9, fft, pen=pg.mkPen('g', width=1))
 
     def data_save(self):
-        np.savetxt(str(self.aux_data[self.spin_sample.value()]) + '.txt', self.profile_data[self.spin_sample.value()])
-        self.statusbar.showMessage('data N %d saved' % (self.spin_sample.value()))
+        # np.savetxt(str(self.aux_data[self.spin_sample.value()]) + '.txt', self.profile_data[self.spin_sample.value()])
+        # self.statusbar.showMessage('data N %d saved' % (self.spin_sample.value()))
+
+        save_dir = QFileDialog.getSaveFileName(parent=self, directory=DIR + 'saved_data', filter='Text Files (*.txt)')
+        if save_dir:
+            file_name = save_dir[0]
+            save_file = open(file_name, 'w')
+            save_file.write(str(self.EXPERIMENT_CALIBRATION))
+            save_file.write('\n')
+            s_profile_data = {key: np.ndarray.tolist(val) for key, val in self.profile_data.items()}
+            save_file.write(json.dumps(s_profile_data))
+            save_file.close()
+            self.statusbar.showMessage('data saved')
+
+    def data_load(self):
+        self.load_flag = 1
+        load_file = QFileDialog.getOpenFileName(parent=self, directory=DIR + 'saved_data', filter='Text Files (*.txt)')
+        file_name = load_file[0]
+        load_file_ = open(file_name, 'r')
+        load_data = load_file_.readlines()
+        self.EXPERIMENT_CALIBRATION = float(load_data[0])
+        self.profile_data = json.loads(load_data[1])
+
+        self.slider_sample.setRange(1, len(self.profile_data))
+        self.spin_sample.setRange(1, len(self.profile_data))
+        self.sample_replot()
 
     def plot_area(self):
         pg.setConfigOption('background', 'w')
