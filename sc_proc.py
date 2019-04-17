@@ -91,6 +91,7 @@ class SCProc(QMainWindow):
         errfunc = lambda p, x, y: gaussfit(p, x) - profile
         p = [4e5, profile.argmax(), 20, 0]
         p_fit, success = optimize.leastsq(errfunc, p[:], args=(np.arange(len(profile)), profile))
+        print(p_fit[2], num)
         sliced_profile = np.sum(data[:, int(p_fit[1] - 3*p_fit[2]):int(p_fit[1] + 3*p_fit[2])], axis=1)
 
         fft = np.fft.rfft((sliced_profile - np.mean(sliced_profile)), len(sliced_profile))
