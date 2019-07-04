@@ -16,7 +16,7 @@ class SCProc(QMainWindow):
     def __init__(self):
         super(SCProc, self).__init__()
         uic.loadUi("sc_plot.ui", self)
-        self.EXPERIMENT_TIME = 10  # ns - set by user
+        self.EXPERIMENT_TIME = 30  # ns - set by user
         self.EXPERIMENT_CALIBRATION = 0  # ns per dot
         self.x = np.arange(0, 1280, 1)
         self.load_flag = 0
@@ -41,6 +41,7 @@ class SCProc(QMainWindow):
         num = 0
         # sorting by date
         self.files_list = sorted(os.listdir(DIR_DATA), key=lambda x: os.path.getctime(os.path.join(DIR_DATA, x)))
+        print(self.files_list)
 
         for file in self.files_list:
             num += 1
@@ -50,6 +51,12 @@ class SCProc(QMainWindow):
                 self.aux_data[str(num)] = 0
             data = np.transpose(np.loadtxt(DIR_DATA + file, skiprows=4))
             self.data_proc(data, str(num))
+
+        # saving profiles for modelating
+        # a = np.array(self.profile_data['1'])
+        # for i in range(2, 5):
+        #     a = np.vstack((a, self.profile_data[str(i)]))
+        # np.savetxt('exclusive_profs.txt', a)
 
         self.slider_sample.setRange(1, len(self.files_list))
         self.spin_sample.setRange(1, len(self.files_list))
@@ -91,13 +98,13 @@ class SCProc(QMainWindow):
         errfunc = lambda p, x, y: gaussfit(p, x) - profile
         p = [4e5, profile.argmax(), 20, 0]
         p_fit, success = optimize.leastsq(errfunc, p[:], args=(np.arange(len(profile)), profile))
-        print(p_fit[2], num)
+        # print(p_fit[2], num)
         sliced_profile = np.sum(data[:, int(p_fit[1] - 3*p_fit[2]):int(p_fit[1] + 3*p_fit[2])], axis=1)
 
         fft = np.fft.rfft((sliced_profile - np.mean(sliced_profile)), len(sliced_profile))
         freq = np.fft.rfftfreq(len(sliced_profile), self.EXPERIMENT_CALIBRATION * 1e-9)
 
-        self.profile_data[num] = sliced_profile
+        self.profile_data[num] = sliced_profile  # / max(sliced_profile)
         self.fft_data[num] = (freq, np.sqrt(fft.real**2 + fft.imag**2))
         self.progress_bar.setValue(int(num) / len(self.files_list) * 100)
 
