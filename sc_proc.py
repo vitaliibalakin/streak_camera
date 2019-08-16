@@ -42,7 +42,7 @@ class SCProc(QMainWindow):
         # sorting by date
         self.files_list = sorted(os.listdir(DIR_DATA), key=lambda x: os.path.getctime(os.path.join(DIR_DATA, x)))
         print(self.files_list)
-
+        self.files_list = ['beam_00000030.pgm']
         for file in self.files_list:
             num += 1
             try:
@@ -98,20 +98,25 @@ class SCProc(QMainWindow):
         errfunc = lambda p, x, y: gaussfit(p, x) - profile
         p = [4e5, profile.argmax(), 20, 0]
         p_fit, success = optimize.leastsq(errfunc, p[:], args=(np.arange(len(profile)), profile))
-        # print(p_fit[2], num)
-        sliced_profile = np.sum(data[:, int(p_fit[1] - 3*p_fit[2]):int(p_fit[1] + 3*p_fit[2])], axis=1)
-
+        print(p_fit, num)
+        background = np.mean(data[400:600, 200:200+int(6*p_fit[2])], axis=1)
+        sliced_profile = np.mean(data[:, int(p_fit[1] - 3*p_fit[2]):int(p_fit[1] + 3*p_fit[2])], axis=1)  # - np.mean(background)
         fft = np.fft.rfft((sliced_profile - np.mean(sliced_profile)), len(sliced_profile))
         freq = np.fft.rfftfreq(len(sliced_profile), self.EXPERIMENT_CALIBRATION * 1e-9)
+
+        # beam = np.where(sliced_profile > 0)
+        # for_save = sliced_profile[beam[0][0]:beam[0][-1]] / max(sliced_profile)
+        # np.savetxt('buffer.txt', np.vstack((for_save, for_save)))
 
         self.profile_data[num] = sliced_profile  # / max(sliced_profile)
         self.fft_data[num] = (freq, np.sqrt(fft.real**2 + fft.imag**2))
         self.progress_bar.setValue(int(num) / len(self.files_list) * 100)
 
     def sample_replot(self):
-        x = self.x * self.EXPERIMENT_CALIBRATION
+        print(self.EXPERIMENT_CALIBRATION)
         sample = str(self.spin_sample.value())
         profile_data = self.profile_data[sample]
+        x = self.x * self.EXPERIMENT_CALIBRATION / 3
 
         if not self.load_flag:
             profile_data = self.profile_data[sample]
@@ -122,11 +127,11 @@ class SCProc(QMainWindow):
             self.fft_plot.clear()
 
             self.beam_plot.setImage(image)
-            self.profile_plot.plot(x, profile_data, pen=pg.mkPen('r', width=1))
-            self.fft_plot.plot(freq / 1e9, fft, pen=pg.mkPen('g', width=1))
+            self.profile_plot.plot(x, profile_data, pen=pg.mkPen('r', width=3))
+            self.fft_plot.plot(freq / 1e9, fft, pen=pg.mkPen('g', width=3))
 
         self.profile_plot.clear()
-        self.profile_plot.plot(x, profile_data, pen=pg.mkPen('r', width=1))
+        self.profile_plot.plot(x, profile_data, pen=pg.mkPen('r', width=3))
 
     def data_save(self):
         # np.savetxt(str(self.aux_data[self.spin_sample.value()]) + '.txt', self.profile_data[self.spin_sample.value()])
@@ -159,6 +164,7 @@ class SCProc(QMainWindow):
     def plot_area(self):
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
+        pg.setConfigOption('antialias', True)
 
         # beam image
         self.beam_plot = pg.ImageView(parent=self)
@@ -171,7 +177,7 @@ class SCProc(QMainWindow):
         self.profile_plot = self.plot_win.addPlot(enableMenu=False)
         self.profile_plot.showGrid(x=True, y=True)
         self.profile_plot.setLabel('left', "Ampl", units='a.u.')
-        self.profile_plot.setLabel('bottom', "Time", units='ns')
+        self.profile_plot.setLabel('bottom', "Z", units='m')
 
         self.plot_win.nextRow()
         # beam fft
